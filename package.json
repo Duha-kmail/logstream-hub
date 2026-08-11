@@ -1,0 +1,17 @@
+{
+  "name": "logstream-hub",
+  "version": "0.1.0",
+  "description": "A TypeScript service for receiving and exploring structured logs",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
