@@ -9,9 +9,16 @@
   },
   "scripts": {
     "build": "tsc",
+    "dev": "tsx watch src/main.ts",
+    "start": "node build/main.js",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "fastify": "^5.4.0"
+  },
   "devDependencies": {
+    "@types/node": "^22.16.5",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
 }
