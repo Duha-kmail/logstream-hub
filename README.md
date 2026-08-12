@@ -13,3 +13,22 @@ GET /health
 ```
 
 Runtime settings can be provided through `HOST`, `PORT`, and `LOG_LEVEL`.
+
+## Log format
+
+Each incoming log will use the following structure:
+
+```json
+{
+  "timestamp": "2026-08-12T09:15:00.000Z",
+  "level": "info",
+  "service": "checkout",
+  "message": "order submitted",
+  "attributes": {
+    "orderId": "A-104",
+    "attempt": 1
+  }
+}
+```
+
+Supported levels are `debug`, `info`, `warn`, and `error`. Attribute values are limited to strings, finite numbers, and booleans.
