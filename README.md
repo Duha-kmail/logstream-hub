@@ -97,3 +97,24 @@ Unit tests cover log validation, query parsing, signed cursors, and retention sc
 ```bash
 npm test
 ```
+
+## Containerized service
+
+Build and start the API together with PostgreSQL:
+
+```bash
+docker compose up --build
+```
+
+The API is exposed on port `8080`, and Compose waits for PostgreSQL readiness before starting it. The runtime image uses a non-root user and contains only production dependencies, compiled files, and database migrations.
+
+## Sample data and load checks
+
+With the service running, generate a small sample dataset or run a client-side workload:
+
+```bash
+npm run seed
+npm run loadtest
+```
+
+Use `SEED_EVENTS`, `SEED_BATCH_SIZE`, `LOAD_EVENTS`, `LOAD_BATCH_SIZE`, and `LOAD_WORKERS` to adjust volume. `LOGSTREAM_URL` changes the target API address.

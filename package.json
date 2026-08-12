@@ -10,7 +10,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/main.ts",
+    "loadtest": "tsx src/commands/load-test.ts",
     "migrate": "tsx src/commands/migrate.ts",
+    "seed": "tsx src/commands/seed.ts",
     "start": "node build/main.js",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
