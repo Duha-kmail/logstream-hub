@@ -6,8 +6,7 @@ export interface LogEventWriter {
 }
 
 export type IngestionOutcome =
-  | { accepted: number; rejected: RejectedEntry[] }
-  | { requestError: string };
+  { accepted: number; rejected: RejectedEntry[] } | { requestError: string };
 
 export async function ingestLogBatch(
   body: unknown,

@@ -23,8 +23,9 @@ export function createHttpServer(
   const eventAggregator = new PostgresLogEventAggregator(database);
 
   server.setErrorHandler((error, _request, reply) => {
-    const statusCode = error.statusCode ?? 500;
-    const message = statusCode >= 500 ? "internal server error" : error.message;
+    const httpError = error as Error & { statusCode?: number };
+    const statusCode = httpError.statusCode ?? 500;
+    const message = statusCode >= 500 ? "internal server error" : httpError.message;
     void reply.status(statusCode).send({ error: message });
   });
 

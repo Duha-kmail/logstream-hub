@@ -57,7 +57,12 @@ export class PostgresLogEventReader {
       addCondition(conditions, values, "severity = ?", criteria.severity);
     }
     if (criteria.from !== undefined) {
-      addCondition(conditions, values, "occurred_at >= ?::timestamptz", criteria.from.toISOString());
+      addCondition(
+        conditions,
+        values,
+        "occurred_at >= ?::timestamptz",
+        criteria.from.toISOString(),
+      );
     }
     if (criteria.to !== undefined) {
       addCondition(conditions, values, "occurred_at < ?::timestamptz", criteria.to.toISOString());
@@ -71,7 +76,12 @@ export class PostgresLogEventReader {
       );
     }
     if (criteria.phrase !== undefined) {
-      addCondition(conditions, values, "lower(content) LIKE ? ESCAPE '\\'", escapeLike(criteria.phrase));
+      addCondition(
+        conditions,
+        values,
+        "lower(content) LIKE ? ESCAPE '\\'",
+        escapeLike(criteria.phrase),
+      );
     }
     if (criteria.cursor !== undefined) {
       values.push(criteria.cursor.occurredAt, criteria.cursor.eventId);

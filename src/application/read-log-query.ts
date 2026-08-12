@@ -31,7 +31,8 @@ function scalar(query: Record<string, unknown>, name: string): string | undefine
 function optionalDate(query: Record<string, unknown>, name: string): Date | undefined {
   const raw = scalar(query, name);
   if (raw === undefined) return undefined;
-  if (!/(Z|[+-]\d{2}:\d{2})$/i.test(raw)) throw new QueryInputError(`${name} must include timezone`);
+  if (!/(Z|[+-]\d{2}:\d{2})$/i.test(raw))
+    throw new QueryInputError(`${name} must include timezone`);
 
   const value = new Date(raw);
   if (Number.isNaN(value.getTime())) throw new QueryInputError(`${name} is invalid`);

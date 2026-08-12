@@ -3,9 +3,7 @@ import type { DatabasePool } from "./connection.js";
 import { preparePartitionsForEntries } from "./partitions.js";
 
 function normalizeMetadata(metadata: Metadata): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(metadata).map(([key, value]) => [key, String(value)]),
-  );
+  return Object.fromEntries(Object.entries(metadata).map(([key, value]) => [key, String(value)]));
 }
 
 export class PostgresLogEventStore {

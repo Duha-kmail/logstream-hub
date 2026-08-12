@@ -2,17 +2,31 @@
 
 LogStream Hub is a TypeScript service for collecting, storing, and exploring structured application logs.
 
-The project will be built incrementally, with each milestone documented in its own commit.
+It provides batch ingestion, filtered search, signed cursor pagination, time-bucket aggregation, and partition-based retention on PostgreSQL.
 
-## Current milestone
+## Quick start
 
-The service exposes a lightweight health endpoint:
+Start the API and PostgreSQL:
 
-```text
-GET /health
+```bash
+docker compose up --build
 ```
 
-Runtime settings can be provided through `HOST`, `PORT`, and `LOG_LEVEL`.
+The API listens on `http://localhost:8080`. Readiness is available at `GET /health`.
+
+## Configuration
+
+| Variable                     | Default                    | Purpose                           |
+| ---------------------------- | -------------------------- | --------------------------------- |
+| `HOST`                       | `0.0.0.0`                  | HTTP bind address                 |
+| `PORT`                       | `8080`                     | HTTP port                         |
+| `LOG_LEVEL`                  | `info`                     | Fastify log level                 |
+| `POSTGRES_URL`               | local `logstream` database | PostgreSQL connection URL         |
+| `POSTGRES_POOL_SIZE`         | `8`                        | Maximum pool connections          |
+| `PARTITION_LOOKAHEAD_DAYS`   | `3`                        | Future daily partitions to create |
+| `CURSOR_SECRET`              | development value          | HMAC key for pagination cursors   |
+| `RETENTION_DAYS`             | `30`                       | Age of partitions retained        |
+| `RETENTION_INTERVAL_MINUTES` | `60`                       | Cleanup schedule interval         |
 
 ## Log format
 
@@ -40,9 +54,7 @@ Supported levels are `debug`, `info`, `warn`, and `error`. Attribute values are 
 ```json
 {
   "accepted": 1,
-  "rejected": [
-    { "index": 1, "reason": "level must be one of debug, info, warn, or error" }
-  ]
+  "rejected": [{ "index": 1, "reason": "level must be one of debug, info, warn, or error" }]
 }
 ```
 
@@ -98,6 +110,16 @@ Unit tests cover log validation, query parsing, signed cursors, and retention sc
 npm test
 ```
 
+Run the complete local verification set with:
+
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
 ## Containerized service
 
 Build and start the API together with PostgreSQL:
@@ -118,3 +140,7 @@ npm run loadtest
 ```
 
 Use `SEED_EVENTS`, `SEED_BATCH_SIZE`, `LOAD_EVENTS`, `LOAD_BATCH_SIZE`, and `LOAD_WORKERS` to adjust volume. `LOGSTREAM_URL` changes the target API address.
+
+## Design documentation
+
+See [Architecture](docs/architecture.md) for the source layout, storage model, request paths, lifecycle, and security decisions.

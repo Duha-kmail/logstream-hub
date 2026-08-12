@@ -28,10 +28,7 @@ describe("log batch validation", () => {
   });
 
   it("keeps the original positions of rejected entries", () => {
-    const result = validateLogBatch(
-      [null, { timestamp: "invalid" }, { level: "fatal" }],
-      fixedNow,
-    );
+    const result = validateLogBatch([null, { timestamp: "invalid" }, { level: "fatal" }], fixedNow);
 
     expect(result.accepted).toHaveLength(0);
     expect(result.rejected.map((entry) => entry.position)).toEqual([0, 1, 2]);

@@ -19,9 +19,10 @@ describe("retention scheduler", () => {
   it("does not overlap cleanup executions", async () => {
     let finish: ((partitions: string[]) => void) | undefined;
     const cleanup = vi.fn(
-      () => new Promise<string[]>((resolve) => {
-        finish = resolve;
-      }),
+      () =>
+        new Promise<string[]>((resolve) => {
+          finish = resolve;
+        }),
     );
     const scheduler = new RetentionScheduler(60, cleanup, {
       info: vi.fn(),

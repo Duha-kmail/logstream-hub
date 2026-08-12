@@ -1,7 +1,4 @@
-import type {
-  AggregateBucket,
-  AggregateCriteria,
-} from "../../application/read-aggregate-query.js";
+import type { AggregateBucket, AggregateCriteria } from "../../application/read-aggregate-query.js";
 import type { DatabasePool } from "./connection.js";
 
 const bucketIntervals: Record<AggregateBucket, string> = {
