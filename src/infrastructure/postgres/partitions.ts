@@ -1,3 +1,4 @@
+import type pg from "pg";
 import type { DatabasePool } from "./connection.js";
 
 function startOfUtcDay(value: Date): Date {
@@ -22,6 +23,41 @@ function quotePartition(identifier: string): string {
   return `"${identifier}"`;
 }
 
+function timestampLiteral(value: Date): string {
+  const iso = value.toISOString();
+  if (!/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/.test(iso)) {
+    throw new Error("generated an unsafe partition boundary");
+  }
+  return `'${iso}'`;
+}
+
+async function createPartition(client: pg.PoolClient, day: Date): Promise<void> {
+  const lowerBound = startOfUtcDay(day);
+  const upperBound = moveUtcDays(lowerBound, 1);
+  const tableName = quotePartition(partitionIdentifier(lowerBound));
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS ${tableName}
+    PARTITION OF log_events
+    FOR VALUES FROM (${timestampLiteral(lowerBound)}) TO (${timestampLiteral(upperBound)})
+  `);
+}
+
+export async function preparePartitionsForEntries(
+  client: pg.PoolClient,
+  timestamps: Date[],
+): Promise<void> {
+  const days = new Map<number, Date>();
+
+  for (const timestamp of timestamps) {
+    const day = startOfUtcDay(timestamp);
+    days.set(day.getTime(), day);
+  }
+
+  await client.query("SELECT pg_advisory_xact_lock($1)", [1_935_724_012]);
+  for (const day of days.values()) await createPartition(client, day);
+}
+
 export async function prepareDailyPartitions(
   pool: DatabasePool,
   lookaheadDays: number,
@@ -35,15 +71,7 @@ export async function prepareDailyPartitions(
 
     const today = startOfUtcDay(referenceTime);
     for (let offset = 0; offset <= lookaheadDays; offset += 1) {
-      const lowerBound = moveUtcDays(today, offset);
-      const upperBound = moveUtcDays(lowerBound, 1);
-      const tableName = quotePartition(partitionIdentifier(lowerBound));
-
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS ${tableName}
-        PARTITION OF log_events
-        FOR VALUES FROM ('${lowerBound.toISOString()}') TO ('${upperBound.toISOString()}')
-      `);
+      await createPartition(client, moveUtcDays(today, offset));
     }
 
     await client.query("COMMIT");

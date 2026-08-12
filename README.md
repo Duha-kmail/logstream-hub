@@ -33,6 +33,21 @@ Each incoming log will use the following structure:
 
 Supported levels are `debug`, `info`, `warn`, and `error`. Attribute values are limited to strings, finite numbers, and booleans.
 
+## Ingest logs
+
+`POST /logs` accepts a `logs` array. Valid entries are stored together in one PostgreSQL transaction, while invalid entries are returned with their original array index.
+
+```json
+{
+  "accepted": 1,
+  "rejected": [
+    { "index": 1, "reason": "level must be one of debug, info, warn, or error" }
+  ]
+}
+```
+
+If every entry is rejected, the endpoint returns `400`. A partially accepted batch returns `200`.
+
 ## Database foundation
 
 PostgreSQL stores log events in a table partitioned by occurrence time. The initial schema includes indexes for source, severity, metadata equality, and message substring searches.
