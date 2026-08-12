@@ -6,6 +6,8 @@ export interface RuntimeSettings {
   postgresPoolSize: number;
   partitionLookaheadDays: number;
   cursorSecret: string;
+  retentionDays: number;
+  retentionIntervalMinutes: number;
 }
 
 function readInteger(
@@ -47,5 +49,12 @@ export function readRuntimeSettings(
     ),
     cursorSecret:
       environment.CURSOR_SECRET?.trim() || "development-cursor-secret",
+    retentionDays: readInteger(environment.RETENTION_DAYS, 30, "RETENTION_DAYS", 3_650),
+    retentionIntervalMinutes: readInteger(
+      environment.RETENTION_INTERVAL_MINUTES,
+      60,
+      "RETENTION_INTERVAL_MINUTES",
+      1_440,
+    ),
   };
 }
