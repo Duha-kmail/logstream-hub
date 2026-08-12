@@ -2,16 +2,23 @@ export interface RuntimeSettings {
   bindAddress: string;
   listenPort: number;
   logLevel: string;
+  postgresUrl: string;
+  postgresPoolSize: number;
 }
 
-function readPort(rawValue: string | undefined): number {
-  const port = rawValue === undefined ? 8080 : Number(rawValue);
+function readInteger(
+  rawValue: string | undefined,
+  fallback: number,
+  label: string,
+  maximum: number,
+): number {
+  const value = rawValue === undefined ? fallback : Number(rawValue);
 
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-    throw new Error("PORT must be an integer between 1 and 65535");
+  if (!Number.isInteger(value) || value < 1 || value > maximum) {
+    throw new Error(`${label} must be an integer between 1 and ${maximum}`);
   }
 
-  return port;
+  return value;
 }
 
 export function readRuntimeSettings(
@@ -19,7 +26,16 @@ export function readRuntimeSettings(
 ): RuntimeSettings {
   return {
     bindAddress: environment.HOST?.trim() || "0.0.0.0",
-    listenPort: readPort(environment.PORT),
+    listenPort: readInteger(environment.PORT, 8080, "PORT", 65_535),
     logLevel: environment.LOG_LEVEL?.trim() || "info",
+    postgresUrl:
+      environment.POSTGRES_URL?.trim() ||
+      "postgres://logstream:logstream@localhost:5432/logstream",
+    postgresPoolSize: readInteger(
+      environment.POSTGRES_POOL_SIZE,
+      8,
+      "POSTGRES_POOL_SIZE",
+      50,
+    ),
   };
 }
