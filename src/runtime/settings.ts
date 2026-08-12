@@ -5,6 +5,7 @@ export interface RuntimeSettings {
   postgresUrl: string;
   postgresPoolSize: number;
   partitionLookaheadDays: number;
+  cursorSecret: string;
 }
 
 function readInteger(
@@ -44,5 +45,7 @@ export function readRuntimeSettings(
       "PARTITION_LOOKAHEAD_DAYS",
       14,
     ),
+    cursorSecret:
+      environment.CURSOR_SECRET?.trim() || "development-cursor-secret",
   };
 }

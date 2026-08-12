@@ -48,6 +48,16 @@ Supported levels are `debug`, `info`, `warn`, and `error`. Attribute values are 
 
 If every entry is rejected, the endpoint returns `400`. A partially accepted batch returns `200`.
 
+## Search logs
+
+`GET /logs` returns the newest events first and supports `service`, `level`, `since`, `until`, `q`, `attr.<key>`, and `limit` filters. Results use signed cursor pagination instead of offsets.
+
+```text
+GET /logs?service=checkout&level=error&limit=50
+```
+
+Pass the returned `next_cursor` value as `cursor` to request the next page. Cursor signatures use `CURSOR_SECRET`.
+
 ## Database foundation
 
 PostgreSQL stores log events in a table partitioned by occurrence time. The initial schema includes indexes for source, severity, metadata equality, and message substring searches.
