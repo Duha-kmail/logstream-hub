@@ -12,6 +12,8 @@
     "dev": "tsx watch src/main.ts",
     "migrate": "tsx src/commands/migrate.ts",
     "start": "node build/main.js",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,6 +24,7 @@
     "@types/node": "^22.16.5",
     "@types/pg": "^8.15.5",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   }
 }

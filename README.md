@@ -89,3 +89,11 @@ On startup, the service applies pending migrations and creates the current and u
 ## Data retention
 
 Old data is removed by dropping complete daily partitions instead of deleting rows individually. `RETENTION_DAYS` controls the age limit and defaults to 30 days. Cleanup runs at startup and then every `RETENTION_INTERVAL_MINUTES`.
+
+## Tests
+
+Unit tests cover log validation, query parsing, signed cursors, and retention scheduling:
+
+```bash
+npm test
+```
