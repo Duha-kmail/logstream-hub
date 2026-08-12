@@ -23,3 +23,14 @@ export async function databaseIsReachable(pool: DatabasePool): Promise<boolean> 
     return false;
   }
 }
+
+export async function logSchemaIsReady(pool: DatabasePool): Promise<boolean> {
+  try {
+    const result = await pool.query<{ available: boolean }>(
+      "SELECT to_regclass('public.log_events') IS NOT NULL AS available",
+    );
+    return result.rows[0]?.available === true;
+  } catch {
+    return false;
+  }
+}

@@ -42,3 +42,11 @@ Database access is configured with `POSTGRES_URL` and `POSTGRES_POOL_SIZE`. Pend
 ```bash
 npm run migrate
 ```
+
+Start the local PostgreSQL instance with:
+
+```bash
+docker compose up -d database
+```
+
+On startup, the service applies pending migrations and creates the current and upcoming daily partitions. The health endpoint reports `503` until the database schema is available.

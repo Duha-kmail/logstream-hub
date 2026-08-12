@@ -1,0 +1,20 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: logstream
+      POSTGRES_USER: logstream
+      POSTGRES_PASSWORD: logstream
+    ports:
+      - "5432:5432"
+    volumes:
+      - logstream-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logstream -d logstream"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+volumes:
+  logstream-postgres:

@@ -4,6 +4,7 @@ export interface RuntimeSettings {
   logLevel: string;
   postgresUrl: string;
   postgresPoolSize: number;
+  partitionLookaheadDays: number;
 }
 
 function readInteger(
@@ -36,6 +37,12 @@ export function readRuntimeSettings(
       8,
       "POSTGRES_POOL_SIZE",
       50,
+    ),
+    partitionLookaheadDays: readInteger(
+      environment.PARTITION_LOOKAHEAD_DAYS,
+      3,
+      "PARTITION_LOOKAHEAD_DAYS",
+      14,
     ),
   };
 }
