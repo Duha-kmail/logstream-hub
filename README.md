@@ -58,6 +58,16 @@ GET /logs?service=checkout&level=error&limit=50
 
 Pass the returned `next_cursor` value as `cursor` to request the next page. Cursor signatures use `CURSOR_SECRET`.
 
+## Aggregate logs
+
+`GET /logs/aggregate` groups matching events into time buckets. The `since`, `until`, and `bucket` parameters are required. Supported buckets are `1m`, `5m`, `1h`, and `1d`.
+
+```text
+GET /logs/aggregate?since=2026-08-12T00:00:00Z&until=2026-08-13T00:00:00Z&bucket=1h&group_by=service
+```
+
+Use `group_by=service` or `group_by=level` to split each bucket. The endpoint also accepts the service, level, message, and attribute filters used by log search.
+
 ## Database foundation
 
 PostgreSQL stores log events in a table partitioned by occurrence time. The initial schema includes indexes for source, severity, metadata equality, and message substring searches.
