@@ -1,6 +1,8 @@
 import type pg from "pg";
 import type { DatabasePool } from "./connection.js";
 
+const preparedPartitions = new Set<string>();
+
 function startOfUtcDay(value: Date): Date {
   return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
 }
@@ -46,16 +48,33 @@ async function createPartition(client: pg.PoolClient, day: Date): Promise<void> 
 export async function preparePartitionsForEntries(
   client: pg.PoolClient,
   timestamps: Date[],
-): Promise<void> {
+): Promise<string[]> {
   const days = new Map<number, Date>();
 
   for (const timestamp of timestamps) {
     const day = startOfUtcDay(timestamp);
-    days.set(day.getTime(), day);
+    if (!preparedPartitions.has(partitionIdentifier(day))) days.set(day.getTime(), day);
   }
 
+  if (days.size === 0) return [];
+
   await client.query("SELECT pg_advisory_xact_lock($1)", [1_935_724_012]);
-  for (const day of days.values()) await createPartition(client, day);
+  const created: string[] = [];
+  for (const day of days.values()) {
+    const identifier = partitionIdentifier(day);
+    if (preparedPartitions.has(identifier)) continue;
+    await createPartition(client, day);
+    created.push(identifier);
+  }
+  return created;
+}
+
+export function rememberPreparedPartitions(partitions: string[]): void {
+  for (const partition of partitions) preparedPartitions.add(partition);
+}
+
+export function forgetPreparedPartitions(partitions: string[]): void {
+  for (const partition of partitions) preparedPartitions.delete(partition);
 }
 
 export async function prepareDailyPartitions(
@@ -70,11 +89,15 @@ export async function prepareDailyPartitions(
     await client.query("SELECT pg_advisory_xact_lock($1)", [1_935_724_012]);
 
     const today = startOfUtcDay(referenceTime);
+    const created: string[] = [];
     for (let offset = 0; offset <= lookaheadDays; offset += 1) {
-      await createPartition(client, moveUtcDays(today, offset));
+      const day = moveUtcDays(today, offset);
+      await createPartition(client, day);
+      created.push(partitionIdentifier(day));
     }
 
     await client.query("COMMIT");
+    rememberPreparedPartitions(created);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

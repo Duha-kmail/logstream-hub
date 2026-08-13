@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import { BufferedLogWriter } from "../application/buffered-log-writer.js";
 import { ingestLogBatch } from "../application/ingest-log-batch.js";
 import { readAggregateCriteria } from "../application/read-aggregate-query.js";
 import { QueryInputError, readLogSearchCriteria } from "../application/read-log-query.js";
@@ -18,7 +19,12 @@ export function createHttpServer(
       level: settings.logLevel,
     },
   });
-  const eventStore = new PostgresLogEventStore(database);
+  const eventStore = new PostgresLogEventStore(database, settings.ingestionSynchronousCommit);
+  const bufferedWriter = new BufferedLogWriter(eventStore, {
+    flushIntervalMs: settings.ingestionFlushMs,
+    maximumBatchEntries: settings.ingestionBatchSize,
+    maximumQueuedEntries: settings.ingestionQueueLimit,
+  });
   const eventReader = new PostgresLogEventReader(database, settings.cursorSecret);
   const eventAggregator = new PostgresLogEventAggregator(database);
 
@@ -38,7 +44,7 @@ export function createHttpServer(
   });
 
   server.post("/logs", async (request, reply) => {
-    const outcome = await ingestLogBatch(request.body, eventStore);
+    const outcome = await ingestLogBatch(request.body, bufferedWriter);
 
     if ("requestError" in outcome) {
       return reply.status(400).send({ error: outcome.requestError });
@@ -82,6 +88,7 @@ export function createHttpServer(
   });
 
   server.addHook("onClose", async () => {
+    await bufferedWriter.close();
     await database.end();
   });
 

@@ -32,13 +32,17 @@ Original attributes are preserved in `metadata`. A second JSONB value, `searchab
 
 ## Write path
 
-The ingestion endpoint validates every entry independently. Accepted entries are inserted with one parameterized `UNNEST` statement inside a transaction. Required daily partitions are created under an advisory transaction lock before the insert. Invalid entries retain their original batch position in the response.
+The ingestion endpoint validates every entry independently. A bounded micro-batching layer combines concurrent requests for a short interval, then inserts their accepted entries with one parameterized `UNNEST` statement inside a transaction. This amortizes transaction, WAL flush, pool, and network overhead while preserving one response per original request. Queue saturation returns `503` as explicit backpressure.
+
+Required daily partitions are created under an advisory transaction lock. Prepared partition names are cached after commit, keeping locks and DDL out of the steady-state write path. Invalid entries retain their original batch position in the response.
 
 ## Read path
 
 Search filters are converted to parameterized SQL predicates. Results are ordered by `(occurred_at DESC, event_id DESC)`. Pagination uses an HMAC-signed cursor containing the last row's timestamp and identifier, avoiding the cost and consistency problems of deep offsets.
 
 Aggregation uses PostgreSQL `date_bin` with a strictly allow-listed interval and optional grouping by source or severity. All filter values remain query parameters.
+
+The frequent one-hour aggregation grouped by service uses transactionally maintained hourly totals for complete hours and scans raw events only for partial boundary hours. Filtered and differently grouped requests keep the general raw-event path.
 
 ## Lifecycle
 

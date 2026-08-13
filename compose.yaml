@@ -12,6 +12,10 @@ services:
       CURSOR_SECRET: local-compose-secret
       RETENTION_DAYS: 30
       RETENTION_INTERVAL_MINUTES: 60
+      INGEST_FLUSH_MS: 10
+      INGEST_BATCH_SIZE: 5000
+      INGEST_QUEUE_LIMIT: 200000
+      INGEST_SYNCHRONOUS_COMMIT: false
     ports:
       - "8080:8080"
     depends_on:
@@ -31,6 +35,18 @@ services:
 
   database:
     image: postgres:16-alpine
+    command:
+      - postgres
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - max_wal_size=2GB
+      - -c
+      - min_wal_size=512MB
+      - -c
+      - checkpoint_timeout=15min
+      - -c
+      - checkpoint_completion_target=0.9
     environment:
       POSTGRES_DB: logstream
       POSTGRES_USER: logstream

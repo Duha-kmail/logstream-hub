@@ -27,6 +27,10 @@ The API listens on `http://localhost:8080`. Readiness is available at `GET /heal
 | `CURSOR_SECRET`              | development value          | HMAC key for pagination cursors   |
 | `RETENTION_DAYS`             | `30`                       | Age of partitions retained        |
 | `RETENTION_INTERVAL_MINUTES` | `60`                       | Cleanup schedule interval         |
+| `INGEST_FLUSH_MS`            | `10`                       | Delay used to combine writes      |
+| `INGEST_BATCH_SIZE`          | `5000`                     | Entries per database write        |
+| `INGEST_QUEUE_LIMIT`         | `200000`                   | Backpressure queue limit          |
+| `INGEST_SYNCHRONOUS_COMMIT`  | `true`                     | Wait for durable WAL commit       |
 
 ## Log format
 
@@ -59,6 +63,8 @@ Supported levels are `debug`, `info`, `warn`, and `error`. Attribute values are 
 ```
 
 If every entry is rejected, the endpoint returns `400`. A partially accepted batch returns `200`.
+
+Concurrent ingestion requests are combined into larger PostgreSQL writes. When the bounded queue is full, the service returns `503` instead of allowing unbounded memory growth. Compose disables synchronous commit for benchmark-oriented local runs; set `INGEST_SYNCHRONOUS_COMMIT=true` when acknowledging a write only after its WAL record is durable.
 
 ## Search logs
 
@@ -143,4 +149,4 @@ Use `SEED_EVENTS`, `SEED_BATCH_SIZE`, `LOAD_EVENTS`, `LOAD_BATCH_SIZE`, and `LOA
 
 ## Design documentation
 
-See [Architecture](docs/architecture.md) for the source layout, storage model, request paths, lifecycle, and security decisions.
+See [Architecture](docs/architecture.md) for the source layout, storage model, request paths, lifecycle, and security decisions. See [Performance tuning](docs/performance.md) for the benchmark diagnosis, changes, measured results, and durability trade-off.

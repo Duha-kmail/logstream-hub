@@ -56,7 +56,7 @@ async function sampleReads(): Promise<void> {
   const [search, aggregate] = await Promise.all([
     measure(`${baseUrl}/logs?service=orders&limit=100&q=completed`, undefined),
     measure(
-      `${baseUrl}/logs/aggregate?since=${since}&until=${until}&bucket=1h&group_by=level`,
+      `${baseUrl}/logs/aggregate?since=${since}&until=${until}&bucket=1h&group_by=service`,
       undefined,
     ),
   ]);

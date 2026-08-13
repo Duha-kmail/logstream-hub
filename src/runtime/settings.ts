@@ -8,6 +8,10 @@ export interface RuntimeSettings {
   cursorSecret: string;
   retentionDays: number;
   retentionIntervalMinutes: number;
+  ingestionFlushMs: number;
+  ingestionBatchSize: number;
+  ingestionQueueLimit: number;
+  ingestionSynchronousCommit: boolean;
 }
 
 function readInteger(
@@ -23,6 +27,26 @@ function readInteger(
   }
 
   return value;
+}
+
+function readNonNegativeInteger(
+  rawValue: string | undefined,
+  fallback: number,
+  label: string,
+  maximum: number,
+): number {
+  const value = rawValue === undefined ? fallback : Number(rawValue);
+  if (!Number.isInteger(value) || value < 0 || value > maximum) {
+    throw new Error(`${label} must be an integer between 0 and ${maximum}`);
+  }
+  return value;
+}
+
+function readBoolean(rawValue: string | undefined, fallback: boolean, label: string): boolean {
+  if (rawValue === undefined || rawValue === "") return fallback;
+  if (rawValue === "true") return true;
+  if (rawValue === "false") return false;
+  throw new Error(`${label} must be true or false`);
 }
 
 export function readRuntimeSettings(environment: NodeJS.ProcessEnv = process.env): RuntimeSettings {
@@ -46,6 +70,29 @@ export function readRuntimeSettings(environment: NodeJS.ProcessEnv = process.env
       60,
       "RETENTION_INTERVAL_MINUTES",
       1_440,
+    ),
+    ingestionFlushMs: readNonNegativeInteger(
+      environment.INGEST_FLUSH_MS,
+      10,
+      "INGEST_FLUSH_MS",
+      1_000,
+    ),
+    ingestionBatchSize: readInteger(
+      environment.INGEST_BATCH_SIZE,
+      5_000,
+      "INGEST_BATCH_SIZE",
+      100_000,
+    ),
+    ingestionQueueLimit: readInteger(
+      environment.INGEST_QUEUE_LIMIT,
+      200_000,
+      "INGEST_QUEUE_LIMIT",
+      2_000_000,
+    ),
+    ingestionSynchronousCommit: readBoolean(
+      environment.INGEST_SYNCHRONOUS_COMMIT,
+      true,
+      "INGEST_SYNCHRONOUS_COMMIT",
     ),
   };
 }

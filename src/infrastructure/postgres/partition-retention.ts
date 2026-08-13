@@ -1,4 +1,5 @@
 import type { DatabasePool } from "./connection.js";
+import { forgetPreparedPartitions } from "./partitions.js";
 
 const partitionPattern = /^log_events_(\d{4})(\d{2})(\d{2})$/;
 const retentionLockId = 1_935_724_013;
@@ -63,7 +64,12 @@ export async function removeExpiredPartitions(
       removed.push(row.partition_name);
     }
 
+    await client.query("DELETE FROM hourly_source_totals WHERE bucket_start < $1", [
+      cutoff.toISOString(),
+    ]);
+
     await client.query("COMMIT");
+    forgetPreparedPartitions(removed);
     return removed;
   } catch (error) {
     await client.query("ROLLBACK");
