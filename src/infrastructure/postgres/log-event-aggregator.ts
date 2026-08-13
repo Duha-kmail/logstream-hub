@@ -38,14 +38,8 @@ export class PostgresLogEventAggregator {
   public constructor(private readonly pool: DatabasePool) {}
 
   public async summarize(criteria: AggregateCriteria): Promise<AggregatePoint[]> {
-    if (
-      criteria.bucket === "1h" &&
-      criteria.groupBy === "service" &&
-      criteria.severity === undefined &&
-      criteria.phrase === undefined &&
-      Object.keys(criteria.metadata).length === 0
-    ) {
-      return this.summarizeHourlySources(criteria);
+    if (criteria.phrase === undefined && Object.keys(criteria.metadata).length === 0) {
+      return this.summarizeDimensions(criteria);
     }
 
     const conditions: string[] = [];
@@ -105,66 +99,86 @@ export class PostgresLogEventAggregator {
     }));
   }
 
-  private async summarizeHourlySources(criteria: AggregateCriteria): Promise<AggregatePoint[]> {
-    const values: unknown[] = [criteria.from.toISOString(), criteria.to.toISOString()];
-    const sourceFilter = criteria.source === undefined ? "" : "AND source_name = $3";
-    if (criteria.source !== undefined) values.push(criteria.source);
+  private async summarizeDimensions(criteria: AggregateCriteria): Promise<AggregatePoint[]> {
+    const values: unknown[] = [
+      criteria.from.toISOString(),
+      criteria.to.toISOString(),
+      bucketIntervals[criteria.bucket],
+    ];
+    const filters: string[] = [];
+    if (criteria.source !== undefined) {
+      values.push(criteria.source);
+      filters.push(`source_name = $${values.length}`);
+    }
+    if (criteria.severity !== undefined) {
+      values.push(criteria.severity);
+      filters.push(`severity = $${values.length}`);
+    }
+
+    const filterSql = filters.length === 0 ? "" : `AND ${filters.join(" AND ")}`;
+    const groupExpression =
+      criteria.groupBy === "service"
+        ? "source_name"
+        : criteria.groupBy === "level"
+          ? "severity"
+          : "NULL::text";
 
     const result = await this.pool.query<AggregateRow>(
       `WITH bounds AS (
          SELECT
            $1::timestamptz AS from_time,
            $2::timestamptz AS to_time,
-           date_bin('1 hour', $1::timestamptz, '1970-01-01T00:00:00Z')
+           date_bin('1 minute', $1::timestamptz, '1970-01-01T00:00:00Z')
              + CASE
                  WHEN $1::timestamptz = date_bin(
-                   '1 hour', $1::timestamptz, '1970-01-01T00:00:00Z'
+                   '1 minute', $1::timestamptz, '1970-01-01T00:00:00Z'
                  ) THEN interval '0'
-                 ELSE interval '1 hour'
-               END AS first_full_hour,
-           date_bin('1 hour', $2::timestamptz, '1970-01-01T00:00:00Z') AS last_full_hour
+                 ELSE interval '1 minute'
+               END AS first_full_minute,
+           date_bin('1 minute', $2::timestamptz, '1970-01-01T00:00:00Z') AS last_full_minute
        ), combined AS (
          SELECT
-           bucket_start,
-           source_name AS group_value,
-           event_count
-         FROM hourly_source_totals, bounds
-         WHERE bucket_start >= first_full_hour
-           AND bucket_start < last_full_hour
-           ${sourceFilter}
+           date_bin($3::interval, bucket_start, '1970-01-01T00:00:00Z') AS result_bucket,
+           ${groupExpression} AS group_value,
+           SUM(event_count)::bigint AS event_count
+         FROM minute_dimension_totals, bounds
+         WHERE bucket_start >= first_full_minute
+           AND bucket_start < last_full_minute
+           ${filterSql}
+         GROUP BY result_bucket, group_value
 
          UNION ALL
 
          SELECT
-           date_bin('1 hour', occurred_at, '1970-01-01T00:00:00Z') AS bucket_start,
-           source_name AS group_value,
+           date_bin($3::interval, occurred_at, '1970-01-01T00:00:00Z') AS result_bucket,
+           ${groupExpression} AS group_value,
            COUNT(*)::bigint AS event_count
          FROM log_events, bounds
          WHERE occurred_at >= from_time
-           AND occurred_at < LEAST(to_time, first_full_hour)
-           ${sourceFilter}
-         GROUP BY bucket_start, source_name
+           AND occurred_at < LEAST(to_time, first_full_minute)
+           ${filterSql}
+         GROUP BY result_bucket, group_value
 
          UNION ALL
 
          SELECT
-           date_bin('1 hour', occurred_at, '1970-01-01T00:00:00Z') AS bucket_start,
-           source_name AS group_value,
+           date_bin($3::interval, occurred_at, '1970-01-01T00:00:00Z') AS result_bucket,
+           ${groupExpression} AS group_value,
            COUNT(*)::bigint AS event_count
          FROM log_events, bounds
-         WHERE to_time > first_full_hour
-           AND occurred_at >= GREATEST(from_time, last_full_hour)
+         WHERE to_time > first_full_minute
+           AND occurred_at >= GREATEST(from_time, last_full_minute)
            AND occurred_at < to_time
-           ${sourceFilter}
-         GROUP BY bucket_start, source_name
+           ${filterSql}
+         GROUP BY result_bucket, group_value
        )
        SELECT
-         bucket_start,
+         result_bucket AS bucket_start,
          group_value,
          SUM(event_count)::text AS event_count
        FROM combined
-       GROUP BY bucket_start, group_value
-       ORDER BY bucket_start ASC, group_value ASC`,
+       GROUP BY result_bucket, group_value
+       ORDER BY result_bucket ASC, group_value ASC NULLS FIRST`,
       values,
     );
 

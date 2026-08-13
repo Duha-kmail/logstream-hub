@@ -64,7 +64,7 @@ export async function removeExpiredPartitions(
       removed.push(row.partition_name);
     }
 
-    await client.query("DELETE FROM hourly_source_totals WHERE bucket_start < $1", [
+    await client.query("DELETE FROM minute_dimension_totals WHERE bucket_start < $1", [
       cutoff.toISOString(),
     ]);
 

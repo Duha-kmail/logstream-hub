@@ -42,7 +42,7 @@ Search filters are converted to parameterized SQL predicates. Results are ordere
 
 Aggregation uses PostgreSQL `date_bin` with a strictly allow-listed interval and optional grouping by source or severity. All filter values remain query parameters.
 
-The frequent one-hour aggregation grouped by service uses transactionally maintained hourly totals for complete hours and scans raw events only for partial boundary hours. Filtered and differently grouped requests keep the general raw-event path.
+Unfiltered message and attribute aggregation uses transactionally maintained minute totals split by service and severity. These totals can be regrouped into any supported bucket and optional service or level grouping while raw events are scanned only for partial boundary minutes. Requests with message or attribute filters keep the general raw-event path.
 
 ## Lifecycle
 

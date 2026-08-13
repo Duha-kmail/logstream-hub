@@ -50,7 +50,7 @@ export class PostgresLogEventStore {
           entries.map((entry) => JSON.stringify(normalizeMetadata(entry.metadata))),
         ],
       );
-      await this.incrementHourlySourceTotals(client, entries);
+      await this.incrementMinuteDimensionTotals(client, entries);
 
       await client.query("COMMIT");
       rememberPreparedPartitions(preparedPartitions);
@@ -63,24 +63,29 @@ export class PostgresLogEventStore {
     }
   }
 
-  private async incrementHourlySourceTotals(
+  private async incrementMinuteDimensionTotals(
     client: import("pg").PoolClient,
     entries: LogEntry[],
   ): Promise<void> {
     const totals = new Map<
       string,
-      { bucketStart: string; sourceName: string; eventCount: number }
+      { bucketStart: string; sourceName: string; severity: string; eventCount: number }
     >();
 
     for (const entry of entries) {
       const bucket = new Date(entry.occurredAt);
-      bucket.setUTCMinutes(0, 0, 0);
+      bucket.setUTCSeconds(0, 0);
       const bucketStart = bucket.toISOString();
-      const key = `${bucketStart}\0${entry.source}`;
+      const key = `${bucketStart}\0${entry.source}\0${entry.severity}`;
       const current = totals.get(key);
 
       if (current === undefined) {
-        totals.set(key, { bucketStart, sourceName: entry.source, eventCount: 1 });
+        totals.set(key, {
+          bucketStart,
+          sourceName: entry.source,
+          severity: entry.severity,
+          eventCount: 1,
+        });
       } else {
         current.eventCount += 1;
       }
@@ -88,18 +93,26 @@ export class PostgresLogEventStore {
 
     const rows = [...totals.values()].sort((left, right) =>
       left.bucketStart === right.bucketStart
-        ? left.sourceName.localeCompare(right.sourceName)
+        ? left.sourceName === right.sourceName
+          ? left.severity.localeCompare(right.severity)
+          : left.sourceName.localeCompare(right.sourceName)
         : left.bucketStart.localeCompare(right.bucketStart),
     );
 
     await client.query(
-      `INSERT INTO hourly_source_totals (bucket_start, source_name, event_count)
-       SELECT * FROM UNNEST($1::timestamptz[], $2::text[], $3::bigint[])
-       ON CONFLICT (bucket_start, source_name) DO UPDATE
-       SET event_count = hourly_source_totals.event_count + EXCLUDED.event_count`,
+      `INSERT INTO minute_dimension_totals (
+         bucket_start,
+         source_name,
+         severity,
+         event_count
+       )
+       SELECT * FROM UNNEST($1::timestamptz[], $2::text[], $3::text[], $4::bigint[])
+       ON CONFLICT (bucket_start, source_name, severity) DO UPDATE
+       SET event_count = minute_dimension_totals.event_count + EXCLUDED.event_count`,
       [
         rows.map((row) => row.bucketStart),
         rows.map((row) => row.sourceName),
+        rows.map((row) => row.severity),
         rows.map((row) => row.eventCount),
       ],
     );

@@ -10,7 +10,7 @@ The initial external run achieved 2,119 logs/second in the sustained scenario an
 - One writer drains the queue, reducing transaction and pool contention while reserving connections for reads.
 - Queue limits provide explicit `503` backpressure instead of unbounded memory growth.
 - Prepared daily partitions are cached after commit, removing advisory locks and DDL from steady-state ingestion.
-- The common one-hour service aggregation reads transactionally maintained hourly totals and scans raw rows only for partial boundary hours.
+- Minute-level totals split by service and severity accelerate supported aggregation buckets while raw scans are limited to partial boundary minutes.
 - Compose uses asynchronous commit for the benchmark-oriented local profile and spreads WAL checkpoint work over a larger interval.
 
 ## Local measurements
@@ -26,6 +26,8 @@ All comparisons used the same Windows Docker Desktop environment.
 On 253,342 stored events, an aligned eight-day hourly service aggregation returned identical totals and groups from both paths. PostgreSQL execution time for the rollup scan was 0.162 ms versus 125.686 ms for raw aggregation.
 
 After enabling the rollup, a longer mixed run inserted 300,000 events in 24.09 seconds using 33-event requests and 32 workers. It sustained 12,455 logs/second with zero request errors, 143.97 ms ingestion p95, and 75.13 ms aggregation p95 while the database grew to approximately 660,000 events.
+
+The second tuning pass addressed the benchmark's moving 24-hour window, whose final hour is normally partial. The hourly rollup still had to scan that hot hour, so it was replaced by minute totals. A 300,000-event mixed run after this change sustained 11,915 logs/second with zero errors, 127.83 ms ingestion p95, and 84.11 ms aggregation p95. Four aggregation shapes (`1h/service`, `5m/level`, filtered `1d`, and filtered `1m/service`) matched raw SQL totals and group counts exactly.
 
 The external leaderboard workload should be rerun because it uses a constant arrival rate, a longer duration, and resource controls that the lightweight local tool does not reproduce exactly.
 
